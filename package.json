@@ -1,0 +1,26 @@
+{
+  "name": "lumusExpress",
+  "version": "1.0.0",
+  "description": "Backend server express",
+  "homepage": "https://github.com/ShaySapozhnikov/LumusExpressBackend",
+  "bugs": {
+    "url": "https://github.com/ShaySapozhnikov/LumusExpressBackend/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShaySapozhnikov/LumusExpressBackend.git"
+  },
+  "license": "ISC",
+  "author": "Shay Sapozhnikov",
+  "type": "commonjs",
+  "main": "server.ts",
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5"
+  }
+}
