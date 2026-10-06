@@ -5,7 +5,7 @@
 
 ```
 
-npm -i 
-npx nodemon server.ts // make sure you are on V5.9.3 ts
+npm install
+npm run dev  // watches and restarts on file changes
 
 ```
