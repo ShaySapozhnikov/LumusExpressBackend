@@ -7,6 +7,10 @@ export type credentials = {
     JwtToken?:string,
 }
 
+
+
+
+
 export interface auth {
     getAuth(credentials:credentials): Promise<boolean>;   // authorized = true  authorized = false;
     removeAuth(accountId : string) : Promise<boolean>; // successfully logged out  = true   did not log out = false;

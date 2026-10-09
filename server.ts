@@ -6,6 +6,8 @@ require('dotenv').config();
 
 const authRoutes = require('./AuthService/AuthService');
 
+const userRoutes = require('./userService/userService')
+
 
 
 
@@ -41,6 +43,7 @@ app.use(responseTime()); // curl -I X-Response-Time header
 app.use(express.json());
 
 app.use('/auth', authRoutes)
+app.use('/user', userRoutes)
 
 
 app.listen(port, ()=>{console.log(`Lumus server running on ${port}`);});

@@ -18,6 +18,8 @@ router.get('/ping' , (req : any,res: any) =>{
 });
 
 
+
+
 router.post('/emailLogin', async (req:any, res:any) => {
     
     const {email, password } = req.body; 
@@ -40,7 +42,6 @@ router.post('/emailLogin', async (req:any, res:any) => {
         console.log("Login Error: ",error);
         return res.status(500).json({error: "server error"});
     }
-
 });
 
 module.exports = router;
