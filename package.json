@@ -16,12 +16,15 @@
   "main": "server.ts",
   "devDependencies": {
     "@types/node": "^26.6.3",
+    "@types/response-time": "^2.3.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "dotenv": "^18.0.5",
-    "mongodb": "^7.7.0"
+    "mongodb": "^7.7.0",
+    "response-time": "^2.3.4"
   },
   "compilerOptions": {
     "allowImportingTsExtensions": true,

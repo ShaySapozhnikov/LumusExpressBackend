@@ -1,5 +1,28 @@
 
+
 require('dotenv').config();
+
+//services imports 
+
+const authRoutes = require('./AuthService/AuthService');
+
+
+
+
+
+
+///////////////////////
+//middle wares 
+var responseTime = require('response-time'); // for future analytics.
+
+
+
+
+////////////////////////
+
+
+
+
 
 const express = require('express');
 
@@ -8,15 +31,20 @@ const app = express();
 const port = process.env.PORT;
 
 
-app.get('/ping' , (req : any,res: any) =>{
-    res.send('pong');
 
-});
+//todo add a API key middleware for auth + user services only
+app.use(responseTime()); // curl -I X-Response-Time header 
 
-app.listen(port, ()=>{
-    console.log(`Lumus server running on ${port}`);
 
-});
+
+
+app.use(express.json());
+
+app.use('/auth', authRoutes)
+
+
+app.listen(port, ()=>{console.log(`Lumus server running on ${port}`);});
+
 
 
 
