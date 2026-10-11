@@ -61,7 +61,7 @@ app.use(express.json()); // i am not creating my own json parser lol
 
 app.use(passport.initialize());
 
-app.use('/auth', authRoutes)
+app.use('/auth', requireApiKey,authRoutes)
 
 app.use('/user',requireApiKey, userRoutes)
 
