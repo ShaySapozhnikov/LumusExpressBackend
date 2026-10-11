@@ -1,23 +1,19 @@
-import { error } from "node:console";
+
 import { db } from "../dbServices/mongoClient";
-
-
-
-
-
 
 
 export interface UserData {
   accountId: string;
   email: string;
   username: string;
-  password: string; 
+  password?: string; 
   authProvider:string
+  //first login boolean needed for acc for onboarding #feat
 }
 
 interface CreateUserInput {
   email: string;
-  username: string;
+  username?: string; // only optional because i use regex for default usernames -- users can change them later in onboarding feature.
   authProvider: string;
   password?: string;
 }
@@ -29,7 +25,7 @@ const bcrypt = require('bcryptjs');
 
 const validateEmail = (email: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email); // taken from stack overflow
 
-const isValidUsername = (username: string): boolean =>username.trim().length > 0;
+const isValidPassword = (password: string): boolean =>password.trim().length > 6;
 
 
 async function checkUserExists(email:string):Promise<boolean> {
@@ -49,42 +45,46 @@ export async function createUser({email,username,authProvider,password}: CreateU
   
   //check if user already exist before making the account
   var user = await checkUserExists(email);
-
+  
 
   if (user) {throw new Error('USER ALREADY EXISTS')}
 
+
+
   switch(authProvider){
     
-
     case authProvider = "email":
-      if (!password ||!username || !email){throw new Error('NULL ERROR!')}
+      if (!password || !email){throw new Error('NULL ERROR!')}
 
       //validate email and username
       var ok = validateEmail(email);
 
       if(!ok){throw new Error('invalid email address')}
 
-      ok = isValidUsername(username);
+      ok = isValidPassword(password);
+      //500 error due to somehow bypassed frontend filtering! -- honeypot for ip banning in the future.
+      // html and js manipulation ban
 
-      if(!ok){throw new Error('invalid Username Format')}
+      if(!ok){throw new Error('invalid password Format')}
 
       // Garbage clean up
       const cleanEmail = email.trim().toLowerCase();
-      const cleanUsername = username.trim()
 
-
+      // create default username.
+      username = email.replace(/@.*/, "");
       
+
       // hash password
       const hash = await bcrypt.hash(password, 10);
 
       // generate a user UUID
-      const uuid = crypto.randomUUID();
+      var uuid = crypto.randomUUID();
       
       
-      const newUser: UserData = {
+      var newUser: UserData = {
         accountId: uuid,
         email: cleanEmail,
-        username: cleanUsername,
+        username: username,
         password: hash,
         authProvider: "email",
       };
@@ -92,12 +92,43 @@ export async function createUser({email,username,authProvider,password}: CreateU
 
       try{
         const user = await db.collection<UserData>("users").insertOne(newUser);
+      
+      
         return newUser;
+      
+        
+      
 
       } catch(error){
          console.error("failed to get user:", error);
          throw error;
       }
+
+    case authProvider = "google":
+      if (!email){throw new Error('NULL ERROR!')}
+
+      var ok = validateEmail(email);
+      if(!ok){throw new Error('invalid email address')} 
+      // idk how this could possibly even happen but i don't trust google.
+      // no need to clean up email here due to correct format after google callback
+
+      username = email.replace(/@.*/, "");
+      
+      uuid = crypto.randomUUID();
+      
+      var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: "google"};
+
+      try{
+        const user = await db.collection<UserData>("users").insertOne(newUser);
+        return newUser;
+
+      }catch(error){
+        console.error("failed to get user:", error);
+        throw error;
+
+      }
+
+         
       
     default:
     throw new Error(`Unsupported auth provider: ${authProvider}`);
@@ -117,10 +148,6 @@ export async function createUser({email,username,authProvider,password}: CreateU
 
 
 }
-
-
-
-
 
 
 export async function getUserData(email: string): Promise<UserData | null> {

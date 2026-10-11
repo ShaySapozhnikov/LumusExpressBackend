@@ -17,7 +17,7 @@ const userRoutes = require('./userService/userService')
 //middle wares 
 var responseTime = require('response-time'); // for future analytics.
 
-
+import passport from './AuthService/passport';
 
 
 ////////////////////////
@@ -40,7 +40,9 @@ app.use(responseTime()); // curl -I X-Response-Time header
 
 
 
-app.use(express.json());
+app.use(express.json()); // hey read and understand json req, and res.
+
+app.use(passport.initialize());
 
 app.use('/auth', authRoutes)
 app.use('/user', userRoutes)
