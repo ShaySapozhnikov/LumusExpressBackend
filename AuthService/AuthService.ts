@@ -154,9 +154,6 @@ async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boole
     }catch(err){
         throw new Error('failed to save token and send')
     }
-
-    return true;
-    
 }
 
 async function checkToken(email:string, tokenType:tokenType, token:string): Promise<TokenStatus>
