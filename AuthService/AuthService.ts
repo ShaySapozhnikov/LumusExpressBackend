@@ -56,7 +56,19 @@ router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
 
 
 //////////////////////////////////////////////////////////////////////////////
-// email reset password flow needed.
+// email reset password flow needed + verification.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -146,28 +158,6 @@ router.get('/github/callback',passport.authenticate('github', {session: false}),
         return res.status(500).json(error)
     }
   });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 module.exports = router;
