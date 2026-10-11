@@ -17,6 +17,7 @@
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.3",
+    "@types/nodemailer": "^8.0.2",
     "@types/passport": "^1.0.17",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-local": "^1.0.38",
@@ -30,6 +31,7 @@
     "express": "^5.3.0",
     "express-oauth2-jwt-bearer": "^1.10.0",
     "mongodb": "^7.7.0",
+    "nodemailer": "^10.1.0",
     "passport": "^0.7.0",
     "passport-github": "^1.1.0",
     "passport-google-oauth2": "^0.2.0",

@@ -110,7 +110,9 @@ passport.use('email-signup', new LocalStrategy(
     try{
       var existingUser = await getUserData(email);
       if (existingUser){return cb(null, false, {message: "account already Exists with this email address"})}
-      var newUser = await createUser({email:email,password:password,authProvider:"email"});
+
+      var newUser = await createUser({email:email,password:password,authProvider:"email", emailVerified:false});
+
       if (!newUser){return cb(null, false, {message: "failed to create account"})}
       return cb(null,newUser);
 
@@ -133,6 +135,11 @@ passport.use('email-login', new LocalStrategy(
       if (!User){
         return cb(null, false, {message: "Account does not exist with this email please sign up."});
       }
+
+
+      // catch this in app and redirect user to acc email verification!
+      // if cb == "NotVerified" ==> redirect to /verifyAccount
+      if(!User.emailVerified){return cb(null,false,{message:"NotVerified"})} 
 
       if(!User.password){return cb(null, false, {message: "Please sign in using your original sign in method."});}
       

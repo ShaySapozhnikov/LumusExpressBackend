@@ -5,15 +5,31 @@
 
 import {Request, Response ,NextFunction} from 'express';
 import passport from "./passport"; // my strategy pattern and middle man for nay auth i need in the future 
-import { createUser, getUserData } from "../userService/userServiceFunctions";
+import { createUser, getUserData,UserData } from "../userService/userServiceFunctions";
+import { promises } from 'node:dns';
+import { db } from '../dbServices/mongoClient';
+import { sendEmail } from '../emailService/EmailService';
 
+////////////////////////////////////////////////
+// AuthService V1.0
 
+//TODO#
+//clean up needed later for one Concrete res back to app stick to (Boolean,Message)
+// poor performance on sending token needs a shoot and forget.
+
+// security tests needed
+
+// testCase for init needed
+
+////////////////////////////////////////////////
 
 
 const express = require('express');
 
 
 const router = express.Router();
+
+const bcrypt = require('bcryptjs');
 
 
 // just formatting makes it easier in the router.
@@ -56,16 +72,208 @@ router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
 
 
 //////////////////////////////////////////////////////////////////////////////
-// email reset password flow needed + verification.
+// email reset password flow needed + any token verification .
+
+interface token_model{
+    tokenID:string,
+    email:string,
+    token:string,
+    tokenType:string
+    date:Date
+}
+
+
+type tokenType = "passwordReset" | "emailVerification"
+
+type TokenStatus = {
+    status: boolean,
+    message: string
+}
+
+
+async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boolean>
+{
+    /////////////////////
+    //IMPROVEMENTS NEEDED
+    // refactor for fire and forget for emails  slowing down res time to 2.5s with all the await chains.
+    /////////////////////
+
+    if(!email){return false}
+
+    var checkUserExists = await getUserData(email);
+    if(!checkUserExists){return false};
+
+    // check if past token existed  and delete it if route gets called again 
+
+    var pastToken = await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email,tokenType:tokenType})
+
+    //needs logger for cron if fails 
+    /////////////////
+
+    const today = new Date();
+
+    var newToken :token_model =
+    {
+        // base 36  = "0.q5x8..."
+        // take the second index ignore 0.
+        // sets up 6 Alpha Numeric code
+        
+
+        tokenID: crypto.randomUUID(),
+        email: email,
+        token: Math.random().toString(36).substring(2, 8).toUpperCase(),
+        tokenType:tokenType,
+        date: today
+
+    }
+
+
+    try{
+
+        switch(tokenType){
+            case tokenType = "passwordReset":
+                var token = await db.collection<token_model>("resetPasswordTokens").insertOne(newToken);
+                if(!token){return false;}
+                await sendEmail(email,"password reset : Lumus",`Your verification Code: ${newToken.token}`); // needs check
+                return true;
+            
+
+            case tokenType = "emailVerification":
+                token = await db.collection<token_model>("resetPasswordTokens").insertOne(newToken);
+                if(!token){return false;}
+                await sendEmail(email,"Email Verification : Lumus",`Your verification Code: ${newToken.token}`); // needs check
+                return true;
+
+            default:
+                // no token type
+                return false;
+
+        }
+        
+
+    }catch(err){
+        throw new Error('failed to save token and send')
+    }
+
+    return true;
+    
+}
+
+async function checkToken(email:string, tokenType:tokenType, token:string): Promise<TokenStatus>
+{
+
+
+    var Status: TokenStatus= {
+        status:false,
+        message: "init"
+
+    }
+
+    function setStatus(status:boolean,message:string){
+        Status.status = status;
+        Status.message = message;
+
+    }
+
+    var Token = await db.collection<token_model>("resetPasswordTokens").findOne({email, tokenType: tokenType})
+    console.log(Token)
+    if(!Token){
+        setStatus(false,"invalid Email or Verification Code");
+        return Status;
+    }
+
+    const today = new Date();
+    const expirationTime = new Date(Token.date);
+    expirationTime.setHours(expirationTime.getHours() + 24);
+
+    if(today > expirationTime){
+        setStatus(false,"Verification Code expired please Generate a new one");
+    }
+
+    if (Token?.token == token && Token?.tokenType == tokenType){
+        setStatus(true,"Token Validated");
+        await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email, tokenType: tokenType})
+        // add a logger for internal clean up if needed later on a cronjob if deletion failed #feat
+        return Status;
+        
+    }
+
+
+    setStatus(false,"unknown reason");
+    return Status;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+// reset flow
+
+
+router.post('/sendResetPasswordToken', async (req:Request, res:Response)=>{
+    const {email} = req.body;
+    var ok = await GenerateNewToken(email,"passwordReset");
+    if(ok){
+        return res.status(200).json({"success": true});
+    }
+    else{
+        res.status(400).json({"success": false, "message": "User does not exist with this email."});
+    }
+});
+
+
+router.post('/resetPassword', async (req:Request, res:Response) => {
+    const {email,token,password} = req.body;
+
+    var data = await checkToken(email,"passwordReset",token)
+
+    if(!data.status){res.status(401).json({"success": false,"message":data.message});}
+    
+    const hash = await bcrypt.hash(password, 10);
+
+    await db.collection("users").updateOne({email},{$set:{password: hash}})
+
+    return res.status(200).json({"success": true});
+});
 
 
 
+//////////////////////////////////////////////////////////////////////////////
+//email verification
+
+router.post('/verifyEmail', async (req:Request,res:any) =>{
+
+    //// doing this for the sake of it in case there is some delay etc 
+    /// don't want to waste resources here.
+
+    const user = await getUserData(express)
+    
+    if(user?.emailVerified == true){
+        return res.status(200).json({"success": true, "message": "already verified"});
+    }
+  
+
+    const {email,token} = req.body;
+
+    var data = await checkToken(email, "emailVerification",token)
+
+    if(!data.status){res.status(401).json({"success": false,"message":data.message});}
+
+    //#bug review needed make sure that status of the update went threw or create a cron job in the future
+    await db.collection("users").updateOne({email},{$set:{emailVerified: true}}) 
 
 
+    return res.status(200).json({"success": true});
+})
 
+router.post('/sendEmailVerificationToken' ,async (req:Request, res:any) =>{
+    const {email} = req.body    
 
+    var token = await GenerateNewToken(email,"emailVerification")
 
+    if(!token){res.status(500).json({"success": false,"message":"could not create token!"})}
+    
+    
+    return res.status(200).json({"success": true});
 
+});
 
 
 
@@ -73,32 +281,26 @@ router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
 
 
 //////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
 //google
 
 
 
 router.get('/google',passport.authenticate('google',{scope:['email'], session: false})); 
 
-
-
-
-
-
 router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Response) => {
-   
-
-
-    
-
-
 
     const profile = (req as any).user;
     
     if (!profile) {
       return res.status(400).json({ error: 'No email returned by Google' });
     }
-
-  
 
     // check if user exists 
     var user = await getUserData(profile.email)
@@ -115,7 +317,8 @@ router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Re
 
 
     try{
-        const user = await createUser({email: profile.email, authProvider:"google"})
+        // email is verified by 0Auth already
+        const user = await createUser({email: profile.email, authProvider:"google",emailVerified:true}) 
         return res.status(200).json({ success: true,data: user });
     }
     catch(error){
@@ -151,7 +354,7 @@ router.get('/github/callback',passport.authenticate('github', {session: false}),
     if(user){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
 
     try{
-        const user = await createUser({email: profile.email, authProvider:"github"})
+        const user = await createUser({email: profile.email, authProvider:"github",emailVerified:true})
         return res.status(200).json({ success: true,data: user });
     }
     catch(error){

@@ -9,6 +9,7 @@ export interface UserData {
   username: string;
   password?: string; 
   authProvider:string
+  emailVerified: boolean;
   //first login boolean needed for acc for onboarding #feat
 }
 
@@ -16,6 +17,7 @@ interface CreateUserInput {
   email: string;
   authProvider: string;
   password?: string;
+  emailVerified: boolean;
 }
 
 const bcrypt = require('bcryptjs');
@@ -45,7 +47,7 @@ async function checkUserExists(email:string):Promise<boolean> {
   return true
 }
 
- async function storeUser(email:string,auth:string,password:any):  Promise<UserData> {
+ async function storeUser(email:string,auth:string,password:any,emailVerified:boolean):  Promise<UserData> {
 
   switch(auth){
      case "email":
@@ -82,6 +84,8 @@ async function checkUserExists(email:string):Promise<boolean> {
           username: username,
           password: hash,
           authProvider: auth,
+          emailVerified: false
+          
         };
 
 
@@ -108,7 +112,7 @@ async function checkUserExists(email:string):Promise<boolean> {
       
       uuid = crypto.randomUUID();
       
-      var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: auth};
+      var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: auth, emailVerified: emailVerified};
 
       try{
         const user = await db.collection<UserData>("users").insertOne(newUser);
@@ -144,21 +148,21 @@ export async function createUser({email,authProvider,password}: CreateUserInput)
    
     
     case "email":
-      var savedUser = await storeUser(email,authProvider,password)
+      var savedUser = await storeUser(email,authProvider,password,false)
       if(savedUser){return savedUser;}
       console.error("failed to save user");
       return null;
 
 
     case "google":
-      savedUser = await storeUser(email,authProvider,null)
+      savedUser = await storeUser(email,authProvider,null,true)
       if(savedUser){return savedUser;}
       console.error("failed to save user");
       return null;
 
 
     case "github":
-      savedUser = await storeUser(email,authProvider,null)
+      savedUser = await storeUser(email,authProvider,null,true)
       if(savedUser){return savedUser;}
       console.error("failed to save user");
       return null;
