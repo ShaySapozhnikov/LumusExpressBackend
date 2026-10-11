@@ -61,11 +61,16 @@ router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
 
 
 //////////////////////////////////////////////////////////////////////////////
-
+//google
 
 
 
 router.get('/google',passport.authenticate('google',{scope:['email'], session: false})); 
+
+
+
+
+
 
 router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Response) => {
    
@@ -94,7 +99,7 @@ router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Re
         return res.status(200).json({success: true,data: user})
     }
 
-    if(user?.authProvider != "google"){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
+    if(user){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
 
 
     try{
@@ -106,6 +111,62 @@ router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Re
     }
   }
 );
+
+
+
+//////////////////////////////////////////////////////////////////////////////
+//github
+
+
+router.get('/github',passport.authenticate('github',{scope: ['user:email']}));  // github needs this specific scope for email
+
+
+  
+    
+
+router.get('/github/callback',passport.authenticate('github', {session: false}), async (req: Request, res: Response) => {
+        
+    const profile = (req as any).user;
+    if (!profile) {
+        return res.status(400).json({ error: 'profile returned by github' });
+    }
+    var user = await getUserData(profile.email)
+
+    
+    if (user && user?.authProvider == "github"){
+        return res.status(200).json({success: true,data: user})
+    }
+    if(user){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
+
+    try{
+        const user = await createUser({email: profile.email, authProvider:"github"})
+        return res.status(200).json({ success: true,data: user });
+    }
+    catch(error){
+        return res.status(500).json(error)
+    }
+  });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

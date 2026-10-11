@@ -12,16 +12,72 @@ import { createUser, getUserData } from "../userService/userServiceFunctions";
 
 var GoogleStrategy = require( 'passport-google-oauth2' ).Strategy;
 
+var GithubStrategy = require('passport-github').Strategy;
+
+
+
+
+
+passport.use(new GithubStrategy(
+  {
+    clientID: process.env.GITHUB_CLIENT_ID,
+    clientSecret: process.env.GITHUB_CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/github/callback",
+
+  },
+  async function(accessToken:any, refreshToken:any, profile:any, done:any){
+    // fuck you github // had to read docs 
+    //   curl -L \
+    // -H "Accept: application/vnd.github+json" \
+    // -H "Authorization: Bearer <YOUR-TOKEN>" \
+    // -H "X-GitHub-Api-Version: 2026-03-10" \
+    // https://api.github.com/user/emails
+
+    //translated to a fetch 
+    try{
+      const fuckingEmails =  await fetch("https://api.github.com/user/emails",
+        {
+          headers:{
+            Accept: "application/vnd.github+json",
+            Authorization: `Bearer ${accessToken}`
+            // don't need version.
+          }
+
+
+        }
+      );
+      if (!fuckingEmails.ok) return done(null, false);
+
+
+      const emails  = await fuckingEmails.json();
+      
+      // thank you js for building this thank god 
+
+      var userPrimaryEmail = emails.find((email:any) => email.primary == true);
+      //console.log(userPrimaryEmail.email);
+
+      profile.email = userPrimaryEmail.email;
+  
+    }catch(err){
+      return done(err)
+    }
+    return done(null,profile);
+
+  }
+
+));
 
 
 passport.use(new GoogleStrategy({
     
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/callback",
+    callbackURL: "http://localhost:3000/auth/google/callback", // this need to be changed once in prod
   },
 
   function (accessToken:any, refreshToken:any, profile:any, done:any) {
+    
+
 
     // we don't need accessToken or refreshToken as ill be handling sessions in a custom way in my 
     // frontend cookie way i don't want to rely on third party sessions.

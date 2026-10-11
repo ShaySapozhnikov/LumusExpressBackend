@@ -39,6 +39,9 @@ async function checkUserExists(email:string):Promise<boolean> {
 
 
 
+// todo encapsulate and make it less duplicated code
+
+
 export async function createUser({email,username,authProvider,password}: CreateUserInput): Promise<UserData> {
   //console.log("auth picked: ",authProvider);
   
@@ -116,7 +119,7 @@ export async function createUser({email,username,authProvider,password}: CreateU
       
       uuid = crypto.randomUUID();
       
-      var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: "google"};
+      var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: authProvider};
 
       try{
         const user = await db.collection<UserData>("users").insertOne(newUser);
@@ -128,10 +131,29 @@ export async function createUser({email,username,authProvider,password}: CreateU
 
       }
 
+      // todo make an or union case instead remove duplicated lazy code.
+      case authProvider = "github":
+        if (!email){throw new Error('NULL ERROR!')}
+
+        var ok = validateEmail(email);
+        if(!ok){throw new Error('invalid email address')};
+        username = email.replace(/@.*/, "");
+        uuid = crypto.randomUUID();
+        var newUser: UserData = {accountId: uuid, email: email,username: username,authProvider: authProvider};
+        try{
+          const user = await db.collection<UserData>("users").insertOne(newUser);
+          return newUser;
+
+        }catch(error){
+          console.error("failed to get user:", error);
+          throw error;
+
+        }
+
          
       
-    default:
-    throw new Error(`Unsupported auth provider: ${authProvider}`);
+      default:
+        throw new Error(`Unsupported auth provider: ${authProvider}`);
   }
 
 
