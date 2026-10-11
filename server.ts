@@ -21,6 +21,22 @@ import {Request,Response,NextFunction } from 'express';
 import passport from './AuthService/passport';
 
 
+/// api key middleware flexible due to public api routes for future users calls for modding etc 
+// i want user data to be fetchable to anyone if they create a custom key for themselves (#todo)
+
+
+const requireApiKey = ((req: Request, res: Response, next: NextFunction) =>{
+    const key = req.get('API-Key');   
+
+    if(key == process.env.API_KEY){next();}
+
+    else{
+        res.status(401).json({"Error":"unauthorized"});
+    }
+})
+
+
+
 ////////////////////////
 
 
@@ -37,23 +53,6 @@ const port = process.env.PORT;
 
 
 app.use(responseTime()); // curl -I X-Response-Time header 
-
-
-/// api key middleware flexible due to public api routes for future users calls for modding etc 
-// i want user data to be fetchable to anyone if they create a custom key for themselves (#todo)
-
-
-const requireApiKey = ((req: Request, res: Response, next: NextFunction) =>{
-    const key = req.get('API-Key');   
-
-    if(key == process.env.API_KEY){next();}
-
-    else{
-        res.status(401).json({"Error":"unauthorized"});
-    }
-})
-
-
 
 
 
