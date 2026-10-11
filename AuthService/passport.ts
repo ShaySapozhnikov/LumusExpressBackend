@@ -111,6 +111,7 @@ passport.use('email-signup', new LocalStrategy(
       var existingUser = await getUserData(email);
       if (existingUser){return cb(null, false, {message: "account already Exists with this email address"})}
       var newUser = await createUser({email:email,password:password,authProvider:"email"});
+      if (!newUser){return cb(null, false, {message: "failed to create account"})}
       return cb(null,newUser);
 
     }catch(err){
