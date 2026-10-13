@@ -33,7 +33,13 @@ const bcrypt = require('bcryptjs');
 
 
 // just formatting makes it easier in the router.
-var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: '/auth/failed' })
+var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: `${process.env.WEB_APP_URL}/auth/callback?result=${encodeURIComponent(JSON.stringify({success: false, message: 'Google sign-in failed'}))}` })
+
+// OAuth callbacks are hit by the browser, so send it back to the web app instead of answering with JSON.
+// TEMP: the user is passed in the query string until sessions/tokens are in place.
+function redirectToApp(res: Response, result: { success: boolean, data?: any, message?: string }) {
+    return res.redirect(`${process.env.WEB_APP_URL}/auth/callback?result=${encodeURIComponent(JSON.stringify(result))}`);
+}
 
 
 // #todo service health test check
@@ -296,7 +302,7 @@ router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Re
     const profile = (req as any).user;
     
     if (!profile) {
-      return res.status(400).json({ error: 'No email returned by Google' });
+      return redirectToApp(res, {success: false, message: 'No email returned by Google'});
     }
 
     // check if user exists 
@@ -307,19 +313,19 @@ router.get('/google/callback', gmailPassportOptions, async(req: Request, res: Re
     //broken access what if users google account gets hacked does this mean anyone with his google account 
     // can use this account conversely with github or any auth.
     if (user && user?.authProvider == "google"){
-        return res.status(200).json({success: true,data: user})
+        return redirectToApp(res, {success: true, data: user})
     }
 
-    if(user){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
+    if(user){return redirectToApp(res, {success: false, message: "Please sign in using your original sign in method."})}
 
 
     try{
         // email is verified by 0Auth already
         const user = await createUser({email: profile.email, authProvider:"google",emailVerified:true}) 
-        return res.status(200).json({ success: true,data: user });
+        return redirectToApp(res, { success: true, data: user });
     }
     catch(error){
-        return res.status(500).json(error)
+        return redirectToApp(res, {success: false, message: 'Server error'})
     }
   }
 );
