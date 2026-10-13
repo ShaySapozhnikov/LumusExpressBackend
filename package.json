@@ -46,6 +46,8 @@
     "moduleResolution": "bundler"
   },
   "scripts": {
-    "dev": "node --watch -r ts-node/register server.ts"
+    "dev": "node --watch -r ts-node/register server.ts",
+    "build": "echo 'No build step required for Express'"
+
   }
 }
