@@ -24,15 +24,14 @@ import passport from './AuthService/passport';
 /// api key middleware flexible due to public api routes for future users calls for modding etc 
 // i want user data to be fetchable to anyone if they create a custom key for themselves (#todo)
 
+const requireApiKey = ((req: Request, res: Response, next: NextFunction) => {
+    // OAuth providers redirect the browser here, so no API key header can be attached.
+    // Passport verifies these by exchanging the code with the provider.
+    if (/^\/(google|github)\/callback$/.test(req.path) || req.path === '/failed') return next();
 
-const requireApiKey = ((req: Request, res: Response, next: NextFunction) =>{
-    const key = req.get('API-Key');   
-
-    if(key == process.env.API_KEY){next();}
-
-    else{
-        res.status(401).json({"Error":"unauthorized"});
-    }
+    const key = req.get('API-Key');
+    if (key == process.env.API_KEY) { next(); }
+    else { res.status(401).json({ "Error": "unauthorized" }); }
 })
 
 
