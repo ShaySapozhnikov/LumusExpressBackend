@@ -22,7 +22,7 @@ passport.use(new GithubStrategy(
   {
     clientID: process.env.GITHUB_CLIENT_ID,
     clientSecret: process.env.GITHUB_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/github/callback",
+    callbackURL: process.env.GITHUB_CALLBACK_URL,
 
   },
   async function(accessToken:any, refreshToken:any, profile:any, done:any){
@@ -72,7 +72,7 @@ passport.use(new GoogleStrategy({
     
     clientID: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/callback", // this need to be changed once in prod
+    callbackURL: process.env.GOOGLE_CALLBACK_URL, // this need to be changed once in prod
   },
 
   function (accessToken:any, refreshToken:any, profile:any, done:any) {
