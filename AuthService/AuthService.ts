@@ -33,12 +33,12 @@ const bcrypt = require('bcryptjs');
 
 
 // just formatting makes it easier in the router.
-var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: `${process.env.WEB_APP_URL}/auth/callback?result=${encodeURIComponent(JSON.stringify({success: false, message: 'Google sign-in failed'}))}` })
+var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: `${process.env.WEB_APP_URL}/api/auth/callback?result=${encodeURIComponent(JSON.stringify({success: false, message: 'Google sign-in failed'}))}` })
 
 // OAuth callbacks are hit by the browser, so send it back to the web app instead of answering with JSON.
 // TEMP: the user is passed in the query string until sessions/tokens are in place.
 function redirectToApp(res: Response, result: { success: boolean, data?: any, message?: string }) {
-    return res.redirect(`${process.env.WEB_APP_URL}/auth/callback?result=${encodeURIComponent(JSON.stringify(result))}`);
+    return res.redirect(`${process.env.WEB_APP_URL}/api/auth/callback?result=${encodeURIComponent(JSON.stringify(result))}`);
 }
 
 
