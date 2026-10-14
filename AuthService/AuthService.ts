@@ -257,7 +257,7 @@ router.post('/verifyEmail', async (req:Request,res:any) =>{
 
     var data = await checkToken(email, "emailVerification",token)
 
-    if(!data.status){res.status(401).json({"success": false,"message":data.message});}
+    if(!data.status){return res.status(401).json({"success": false,"message":data.message});}
 
     //#bug review needed make sure that status of the update went threw or create a cron job in the future
     await db.collection("users").updateOne({email},{$set:{emailVerified: true}}) 
