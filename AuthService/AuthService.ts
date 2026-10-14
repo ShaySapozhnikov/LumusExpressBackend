@@ -162,7 +162,8 @@ async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boole
     }
 }
 
-async function checkToken(email:string, tokenType:tokenType, token:string): Promise<TokenStatus>
+// consume = false only checks the token (used to validate a reset code before the new password is sent)
+async function checkToken(email:string, tokenType:tokenType, token:string, consume:boolean = true): Promise<TokenStatus>
 {
 
 
@@ -196,7 +197,7 @@ async function checkToken(email:string, tokenType:tokenType, token:string): Prom
 
     if (Token?.token == token && Token?.tokenType == tokenType){
         setStatus(true,"Token Validated");
-        await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email, tokenType: tokenType})
+        if(consume) await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email, tokenType: tokenType})
         // add a logger for internal clean up if needed later on a cronjob if deletion failed #feat
         return Status;
         
@@ -220,6 +221,18 @@ router.post('/sendResetPasswordToken', async (req:Request, res:Response)=>{
     else{
         res.status(400).json({"success": false, "message": "User does not exist with this email."});
     }
+});
+
+
+// checks a reset code without using it up, so the client can confirm it before asking for a new password
+router.post('/verifyResetPasswordToken', async (req:Request, res:Response) => {
+    const {email,token} = req.body;
+
+    var data = await checkToken(email,"passwordReset",token,false)
+
+    if(!data.status){return res.status(401).json({"success": false,"message":data.message});}
+
+    return res.status(200).json({"success": true});
 });
 
 
