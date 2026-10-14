@@ -191,6 +191,7 @@ async function checkToken(email:string, tokenType:tokenType, token:string): Prom
 
     if(today > expirationTime){
         setStatus(false,"Verification Code expired please Generate a new one");
+        return Status;
     }
 
     if (Token?.token == token && Token?.tokenType == tokenType){
@@ -227,7 +228,7 @@ router.post('/resetPassword', async (req:Request, res:Response) => {
 
     var data = await checkToken(email,"passwordReset",token)
 
-    if(!data.status){res.status(401).json({"success": false,"message":data.message});}
+    if(!data.status){return res.status(401).json({"success": false,"message":data.message});}
     
     const hash = await bcrypt.hash(password, 10);
 
@@ -271,7 +272,7 @@ router.post('/sendEmailVerificationToken' ,async (req:Request, res:any) =>{
 
     var token = await GenerateNewToken(email,"emailVerification")
 
-    if(!token){res.status(500).json({"success": false,"message":"could not create token!"})}
+    if(!token){return res.status(500).json({"success": false,"message":"could not create token!"})}
     
     
     return res.status(200).json({"success": true});
