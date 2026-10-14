@@ -346,22 +346,22 @@ router.get('/github/callback',passport.authenticate('github', {session: false}),
         
     const profile = (req as any).user;
     if (!profile) {
-        return res.status(400).json({ error: 'profile returned by github' });
+        return redirectToApp(res, {success: false, message: 'No profile returned by GitHub'});
     }
     var user = await getUserData(profile.email)
 
     
     if (user && user?.authProvider == "github"){
-        return res.status(200).json({success: true,data: user})
+        return redirectToApp(res, {success: true, data: user})
     }
-    if(user){return res.status(401).json({success: false, message: "Please sign in using your original sign in method."})}
+    if(user){return redirectToApp(res, {success: false, message: "Please sign in using your original sign in method."})}
 
     try{
         const user = await createUser({email: profile.email, authProvider:"github",emailVerified:true})
-        return res.status(200).json({ success: true,data: user });
+        return redirectToApp(res, { success: true,data: user });
     }
     catch(error){
-        return res.status(500).json(error)
+        return redirectToApp(res, {success: false, message: 'Server error'})
     }
   });
 
