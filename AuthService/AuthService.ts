@@ -9,6 +9,8 @@ import { createUser, getUserData,UserData } from "../userService/userServiceFunc
 import { promises } from 'node:dns';
 import { db } from '../dbServices/mongoClient';
 import { sendEmail } from '../emailService/EmailService';
+import { randomBytes } from 'node:crypto';
+
 
 ////////////////////////////////////////////////
 // AuthService V1.0
@@ -64,7 +66,8 @@ router.post('/emailLogin', (req: Request, res: Response, next: NextFunction) => 
 
 
 router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
-    passport.authenticate('email-signup', {session: false}, (err:any, user:any, info:any) =>{
+    passport.authenticate('email-signup', {session: false}, (err:any, user:any, info:any) =>
+    {
       
         if (err) return res.status(500).json({ success: false, error: 'Server error'});
         if (!user) return res.status(401).json({ success: false, error: info?.message ?? 'SignUp failed (unknown error)' });
@@ -72,7 +75,9 @@ router.post('/emailSignUp',(req:any,res:any, next:NextFunction) =>{
         res.status(200).json({success: true,data:user})
 
 
-    })(req,res,next);
+    })
+    
+    (req,res,next);
 });
 
 
@@ -86,15 +91,40 @@ interface token_model{
     token:string,
     tokenType:string
     date:Date
+    attempts?:number
+}
+
+const MAX_TOKEN_ATTEMPTS = 5;
+
+export const ADMIN_SESSION_MS = 48 * 60 * 60 * 1000; // 48 hours
+
+//#todo need to crate a seprate model file for all models for easy access instead of this 
+interface admin_model{
+    username:string,
+    adminEmail:string,
+    active: boolean
 }
 
 
-type tokenType = "passwordReset" | "emailVerification"
+export interface session_model{
+    userEmail:string,
+    sessionType: "admin" | "defaultUser"
+    sessionHash: string
+    ExpiryDate: Date
+}
+
+
+type tokenType = "passwordReset" | "emailVerification" | "AdminVerfication"
 
 type TokenStatus = {
     status: boolean,
-    message: string
+    message: string,
+    sessionHash?: string
 }
+
+
+
+
 
 
 async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boolean>
@@ -106,12 +136,15 @@ async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boole
 
     if(!email){return false}
 
-    var checkUserExists = await getUserData(email);
-    if(!checkUserExists){return false};
+    // for now bypass unitl i fix the db for admins as also users 
+    if(tokenType !== "AdminVerfication"){
+        var checkUserExists = await getUserData(email);
+        if(!checkUserExists){return false};
+    }
 
     // check if past token existed  and delete it if route gets called again 
 
-    var pastToken = await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email,tokenType:tokenType})
+    var pastToken = await db.collection<token_model>("tokens").findOneAndDelete({email,tokenType:tokenType})
 
     //needs logger for cron if fails 
     /////////////////
@@ -137,19 +170,26 @@ async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boole
     try{
 
         switch(tokenType){
+            // this can also eventuly needs to be cleaned up
             case tokenType = "passwordReset":
-                var token = await db.collection<token_model>("resetPasswordTokens").insertOne(newToken);
+                var token = await db.collection<token_model>("tokens").insertOne(newToken);
                 if(!token){return false;}
                 await sendEmail(email,"password reset : Lumus",`Your verification Code: ${newToken.token}`); // needs check
                 return true;
             
 
             case tokenType = "emailVerification":
-                token = await db.collection<token_model>("resetPasswordTokens").insertOne(newToken);
+                token = await db.collection<token_model>("tokens").insertOne(newToken);
                 if(!token){return false;}
                 await sendEmail(email,"Email Verification : Lumus",`Your verification Code: ${newToken.token}`); // needs check
                 return true;
 
+            case tokenType = "AdminVerfication":
+                token = await db.collection<token_model>("tokens").insertOne(newToken);
+                if(!token){return false;}
+                await sendEmail(email,"Admin Verification : Lumus",`Your verification Code: ${newToken.token}`); // needs check
+                return true;
+                
             default:
                 // no token type
                 return false;
@@ -179,7 +219,7 @@ async function checkToken(email:string, tokenType:tokenType, token:string, consu
 
     }
 
-    var Token = await db.collection<token_model>("resetPasswordTokens").findOne({email, tokenType: tokenType})
+    var Token = await db.collection<token_model>("tokens").findOne({email, tokenType: tokenType})
     console.log(Token)
     if(!Token){
         setStatus(false,"invalid Email or Verification Code");
@@ -197,16 +237,139 @@ async function checkToken(email:string, tokenType:tokenType, token:string, consu
 
     if (Token?.token == token && Token?.tokenType == tokenType){
         setStatus(true,"Token Validated");
-        if(consume) await db.collection<token_model>("resetPasswordTokens").findOneAndDelete({email, tokenType: tokenType})
+        if(consume) await db.collection<token_model>("tokens").findOneAndDelete({email, tokenType: tokenType})
         // add a logger for internal clean up if needed later on a cronjob if deletion failed #feat
         return Status;
         
     }
 
 
-    setStatus(false,"unknown reason");
+    
+    // $inc json type allows us to incrment by defualt 
+
+    const updated = await db.collection<token_model>("tokens").findOneAndUpdate({_id: Token._id}, {$inc: {attempts: 1}}, {returnDocument: "after"});
+
+    if (!updated || (updated.attempts ?? 0) >= MAX_TOKEN_ATTEMPTS) {
+
+        await db.collection<token_model>("tokens").deleteOne({_id: Token._id});
+
+        setStatus(false,"Too many attempts please Generate a new Verification Code");
+
+        return Status;
+    }
+
+    setStatus(false,"invalid Email or Verification Code");
     return Status;
 }
+
+
+ // this also validates the admin username acc!
+// could have been seprated mabie a fueture refactor - shay
+export async function SendAuthSessionTokenAdmin(credentails:any) :Promise <TokenStatus> {
+    
+
+
+    const username = credentails.username;
+
+    const Status: TokenStatus = {
+        status: false,
+        message: ""
+    };
+
+
+    // #todo need to make this a global function later on!
+    function setStatus(status:boolean,message:string){
+        Status.status = status;
+        Status.message = message;
+
+    }
+
+    if (!username) {
+        setStatus(false,"username is null!")
+        return Status;
+    }
+
+
+    var validAdmin = await db.collection<admin_model>("AdminUsers").findOne({username})
+
+
+    //was going to fo hey admin not exists but to much info for non validated users 
+    // up to interpertation later on if needed.  
+    
+    if(!validAdmin){setStatus(false,"Invalid admin username or password "); return Status} 
+    if (!validAdmin?.adminEmail){setStatus(false,"please contact admin sevices"); return Status}
+
+
+
+
+    var sendToken = await GenerateNewToken(validAdmin?.adminEmail,"AdminVerfication");
+
+    if(!sendToken){setStatus(false,"failed to send email!"); return Status}
+
+
+    setStatus(true,"success!");
+    return Status
+}
+
+
+
+
+//#todo needs a type! for validation!
+export async function validateAdminAuthSessionToken(credentails:any) :Promise<TokenStatus> {
+    const Status: TokenStatus = {
+        status: false,
+        message: "",
+        sessionHash:""
+    };
+    // #todo need to make this a global function later on!
+    function setStatus(status:boolean,message:string,hash: string = ""){
+        Status.status = status;
+        Status.message = message;
+        Status.sessionHash = hash;
+
+    }
+    const username = credentails.username;
+    if (!username) {
+        setStatus(false,"username is null!")
+        return Status;
+    }
+    
+    var validAdmin = await db.collection<admin_model>("AdminUsers").findOne({username})
+
+    if (!validAdmin?.adminEmail){setStatus(false,"email is null!");return Status;}
+
+     // consume always for admin high risk
+
+    var check = await checkToken(validAdmin?.adminEmail,"AdminVerfication",credentails.token,true)
+    
+    if(!check.status){setStatus(false,check.message);return Status;}
+    
+
+    const ExpiryDate = new Date(Date.now() + ADMIN_SESSION_MS);
+    
+    // web does not support radombytes had to import here 
+    const hash = randomBytes(16).toString("hex");
+    
+    var newSession = await db.collection<session_model>("sessions").insertOne(
+    {
+        userEmail: validAdmin.adminEmail,
+        sessionType: "admin",
+        sessionHash: hash,
+        ExpiryDate: ExpiryDate
+    });
+
+    
+    setStatus(true,"success!",hash);
+    return Status
+}
+
+
+
+
+
+
+
+
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 // reset flow
@@ -380,6 +543,6 @@ router.get('/github/callback',passport.authenticate('github', {session: false}),
   });
 
 
-module.exports = router;
+export default router;
 
 

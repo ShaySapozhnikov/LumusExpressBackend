@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumus Admin</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800 p-6">
+    <div class="max-w-md mx-auto mt-16 bg-white rounded-xl shadow p-6">
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold">Lumus Admin</h1>
+            <button id="logout" type="button" class="text-sm text-slate-600 hover:text-slate-900 underline">Log out</button>
+        </div>
+
+        <p class="mb-4 text-lg">{{greeting}}</p>
+
+        <a href="/admin/serverStats"
+            class="block w-full rounded-md bg-slate-900 px-4 py-2 text-center text-white hover:bg-slate-700">Download server stats</a>
+
+    </div>
+
+    <script>
+        document.getElementById('logout').addEventListener('click', async () => {
+            await fetch('/admin/logout', { method: 'POST' });
+            window.location.href = '/admin/login';
+        });
+
+    </script>
+</body>
+</html>

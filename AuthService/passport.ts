@@ -100,7 +100,7 @@ passport.use(new GoogleStrategy({
 
 passport.use('email-signup', new LocalStrategy(
   {
-    usernameField: "email"
+    usernameField: "email" 
 
   },
   

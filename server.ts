@@ -4,9 +4,13 @@ require('dotenv').config();
 
 //services imports 
 
-const authRoutes = require('./AuthService/AuthService');
+import authRoutes from './AuthService/AuthService';
 
 const userRoutes = require('./userService/userService')
+
+import adminRoutes from './AdminService/AdminService';
+
+const path = require('path');
 
 
 
@@ -16,6 +20,7 @@ const userRoutes = require('./userService/userService')
 ///////////////////////
 //middle wares 
 var responseTime = require('response-time'); // for future analytics.
+const cookieParser = require('cookie-parser');
 
 import {Request,Response,NextFunction } from 'express';
 import passport from './AuthService/passport';
@@ -25,9 +30,9 @@ import passport from './AuthService/passport';
 // i want user data to be fetchable to anyone if they create a custom key for themselves (#todo)
 
 const requireApiKey = ((req: Request, res: Response, next: NextFunction) => {
-    // OAuth providers redirect the browser here, so no API key header can be attached.
+   
     // Passport verifies these by exchanging the code with the provider.
-    if (/^\/(google|github)\/callback$/.test(req.path) || req.path === '/failed') return next();
+    if (/^\/(google|github)(\/callback)?$/.test(req.path) || req.path === '/failed') return next();
 
     const key = req.get('API-Key');
     if (key == process.env.API_KEY) { next(); }
@@ -56,13 +61,33 @@ app.use(responseTime()); // curl -I X-Response-Time header
 
 
 
-app.use(express.json()); // i am not creating my own json parser lol 
+app.use(express.json()); // i am not creating my own json parser lol
+
+app.use(express.urlencoded({ extended: true })); // html form bodies etc
+
+app.use(cookieParser()); // fills req.cookies so i dont need to make a custom parser 
 
 app.use(passport.initialize());
 
 app.use('/auth', requireApiKey,authRoutes)
 
 app.use('/user',requireApiKey, userRoutes)
+
+
+app.use('/admin', adminRoutes) // login/logout are open, the router's guard blocks the rest of /admin
+
+
+
+// 404 
+app.use((req: Request, res: Response) => {
+    res.status(404).sendFile(path.join(__dirname, 'public/404.html'));
+});
+
+// 500 
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+    console.error(err);
+    res.status(500).sendFile(path.join(__dirname, 'public/500.html'));
+});
 
 
 

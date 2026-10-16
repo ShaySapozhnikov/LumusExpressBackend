@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lumus Admin Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center bg-slate-50 text-slate-800 p-6">
+    <div class="w-full max-w-md bg-white rounded-xl shadow p-6">
+        <h1 class="text-2xl font-semibold">Verify it's you</h1>
+        <p class="mt-2 text-sm text-slate-500">We sent a verification code to the admin email. Enter it below to continue.</p>
+
+        <form id="verify-form" method="post" action="/admin/verify" class="mt-6 space-y-4">
+            <label for="token" class="block text-sm font-medium">Verification code</label>
+            <input type="text" id="token" name="token" autocomplete="one-time-code" required
+            class="block w-full rounded-md border border-slate-300 px-3 py-2 text-sm tracking-widest focus:border-slate-900 focus:outline-none">
+
+            <button type="submit" class="w-full rounded-md bg-slate-900 px-4 py-2 text-white hover:bg-slate-700">Verify</button>
+        </form>
+
+        <p id="status" class="mt-4 text-sm text-red-600">{{status}}</p>
+    </div>
+</body>
+</html>
