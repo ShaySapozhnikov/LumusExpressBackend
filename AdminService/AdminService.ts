@@ -70,7 +70,7 @@ async function isAdminLoggedIn(req: Request): Promise<boolean> {
 
 // send page func easy access to error updates etc /defult empty only use message for errors
 async function sendPage(res: Response, file: string, message: string = "") {
-    const html = await fs.readFile(path.join(__dirname, '../public', file), 'utf8');
+    const html = await fs.readFile(path.join(__dirname, '../views', file), 'utf8');
     return res.send(html.replace('{{status}}', message));
 }
 
@@ -177,13 +177,13 @@ router.get('/serverStats', (req: Request, res: Response) => {
 
 
 async function sendDashboard(res: Response, greeting: string) {
-    const html = await fs.readFile(path.join(__dirname, '../public/admin/index.html'), 'utf8');
+    const html = await fs.readFile(path.join(__dirname, '../views/admin/index.html'), 'utf8');
     return res.send(html.replace('{{greeting}}', greeting));
 }
 
 
 async function sendLocked(res: Response, message: string) {
-    const html = await fs.readFile(path.join(__dirname, '../public/admin-locked.html'), 'utf8');
+    const html = await fs.readFile(path.join(__dirname, '../views/admin-locked.html'), 'utf8');
     return res.status(403).send(html.replace('{{message}}', message));
 }
 

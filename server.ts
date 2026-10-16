@@ -31,7 +31,7 @@ import passport from './AuthService/passport';
 
 const requireApiKey = ((req: Request, res: Response, next: NextFunction) => {
    
-    // Passport verifies these by exchanging the code with the provider.
+    // Passport // also bypass we dont need auth here thank you regex
     if (/^\/(google|github)(\/callback)?$/.test(req.path) || req.path === '/failed') return next();
 
     const key = req.get('API-Key');
@@ -75,6 +75,10 @@ app.use('/user',requireApiKey, userRoutes)
 
 
 app.use('/admin', adminRoutes) // login/logout are open, the router's guard blocks the rest of /admin
+
+
+// public static files requirment tecnicly render/vercel automaticly can do this but for the sake of the requirment here u go
+app.use(express.static(path.join(__dirname, 'public')));
 
 
 
