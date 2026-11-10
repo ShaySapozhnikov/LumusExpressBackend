@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="text-scale" content="scale" />
+		<title>{% block title %}Lumus{% endblock %}</title>
+		<link rel="icon" href="/favicon.svg" />
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+		<link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet" />
+		<link rel="stylesheet" href="/css/app.css" />
+		{% block head %}{% endblock %}
+	</head>
+	<body>
+		{% block content %}{% endblock %}
+		{% block scripts %}{% endblock %}
+	</body>
+</html>

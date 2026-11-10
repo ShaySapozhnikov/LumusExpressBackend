@@ -1,0 +1,27 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Home | Lumus{% endblock %}
+
+{% block head %}
+<style>
+	.homePage {
+		max-width: 40rem;
+		margin: 0 auto;
+		padding: 2rem 1rem;
+	}
+
+	.homePage pre {
+		overflow-x: auto;
+	}
+</style>
+{% endblock %}
+
+{% block content %}
+<main class="homePage">
+	{% if user %}
+	<h1>Welcome{% if user.username %}, {{ user.username }}{% endif %}</h1>
+
+	<pre>{{ user | dump(2) }}</pre>
+	{% endif %}
+</main>
+{% endblock %}

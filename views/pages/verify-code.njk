@@ -1,0 +1,167 @@
+{% extends "layouts/base.njk" %}
+
+{#
+  Shared by /verify-email and /forgot-password (was CodeVefication.svelte).
+  EmailVerfication: code -> done
+  PasswordReset:    email -> code -> password -> done
+  Every step is a normal form post; the server answers with the next step.
+#}
+
+{% block title %}{{ title }} | Lumus{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/auth.css" />
+{% endblock %}
+
+{% block content %}
+<main class="authPage">
+	{% include "partials/showcase.njk" %}
+
+	<section class="formPanel" aria-labelledby="verify-title">
+		<a class="brand" href="/get-started"> &larr; sign in</a>
+
+		<div class="formInner">
+			<h1 id="verify-title">{{ title }}</h1>
+
+			{% if step == 'email' %}
+			<p class="description">
+				Enter the email on your account and we'll send you a {{ codeLength }}-character verification code.
+			</p>
+			{% elif step == 'code' %}
+			<p class="description">
+				We sent a {{ codeLength }}-character code to
+				{% if email %}<strong>{{ email }}</strong>.{% else %}your email.{% endif %}
+				{% if isReset %}
+				<a class="inlineLink" href="/forgot-password?email={{ email | urlencode }}">Change</a>
+				{% else %}
+				Enter it below to finish creating your account.
+				{% endif %}
+			</p>
+			{% elif step == 'password' %}
+			<p class="description">Choose a new password for your account.</p>
+			{% elif isReset %}
+			<p class="description">Your password has been reset. You can now sign in with your new password.</p>
+			{% else %}
+			<p class="description">Thanks for confirming your email. Your account is ready, sign in to get started.</p>
+			{% endif %}
+
+			{% if formError %}
+			<div class="formError" role="alert">
+				<p>{{ formError }}</p>
+			</div>
+			{% endif %}
+
+			{% if step == 'email' %}
+			<form class="emailForm" method="post" action="{{ action }}" novalidate data-busy-form>
+				<input type="hidden" name="intent" value="send" />
+				<label class="field">
+					<span>Email</span>
+					<input type="email" name="email" autocomplete="email" placeholder="you@example.com" required autofocus
+						value="{{ email }}"
+						{% if emailError %}aria-invalid="true" aria-describedby="email-error"{% endif %} />
+					{% if emailError %}
+					<span class="fieldError" id="email-error">{{ emailError }}</span>
+					{% endif %}
+				</label>
+
+				<button class="submitButton" type="submit" data-busy-label="Sending…">Send code</button>
+			</form>
+
+			<p class="switchPrompt">
+				Remembered it?
+				<a class="inlineLink" href="/get-started">Sign in</a>
+			</p>
+
+			{% elif step == 'code' %}
+			<form class="emailForm" method="post" action="{{ action }}" novalidate data-busy-form data-code-form>
+				<input type="hidden" name="intent" value="verify" />
+				<input type="hidden" name="email" value="{{ email }}" />
+
+				{% if notice %}
+				<div class="formNotice" role="status">
+					<p>{{ notice }}</p>
+				</div>
+				{% endif %}
+
+				<fieldset class="field codeField">
+					<legend>Verification code</legend>
+					<div class="codeInputs">
+						{% for i in range(0, codeLength) %}
+						<input class="codeInput" type="text" name="code" inputmode="text" autocapitalize="characters" spellcheck="false"
+							autocomplete="{{ 'one-time-code' if i == 0 else 'off' }}"
+							maxlength="{{ codeLength if i == 0 else 1 }}"
+							value="{{ code[i] if code else '' }}"
+							aria-label="Character {{ i + 1 }} of {{ codeLength }}"
+							{% if i == 0 %}autofocus{% endif %}
+							{% if codeError %}aria-invalid="true" aria-describedby="code-error"{% endif %} />
+						{% endfor %}
+					</div>
+					{% if codeError %}
+					<span class="fieldError" id="code-error">{{ codeError }}</span>
+					{% endif %}
+				</fieldset>
+
+				<button class="submitButton" type="submit" data-busy-label="Verifying…">
+					{{ 'Continue' if isReset else 'Verify email' }}
+				</button>
+			</form>
+
+			<div class="switchPrompt">
+				Didn't get it? Check your spam folder or
+				<form class="inlineForm" method="post" action="{{ action }}">
+					<input type="hidden" name="intent" value="resend" />
+					<input type="hidden" name="email" value="{{ email }}" />
+					<button type="submit" class="inlineLink" data-resend {% if startCooldown %}data-cooldown="30"{% endif %}>resend code</button>
+				</form>
+			</div>
+			{% if not isReset %}
+			<p class="switchPrompt subtle">
+				Wrong address?
+				<a class="inlineLink" href="/get-started?mode=signup">Sign up again</a>
+			</p>
+			{% endif %}
+
+			{% elif step == 'password' %}
+			<form class="emailForm" method="post" action="{{ action }}" novalidate data-busy-form>
+				<input type="hidden" name="intent" value="reset" />
+				<input type="hidden" name="code" value="{{ code }}" />
+				<input type="email" name="email" autocomplete="username" value="{{ email }}" hidden />
+
+				<label class="field">
+					<span class="fieldLabelRow">
+						New password
+						<button type="button" class="inlineLink" aria-pressed="false" data-toggle-password hidden>Show</button>
+					</span>
+					<input type="password" name="password" autocomplete="new-password" minlength="{{ minPassword }}"
+						placeholder="At least {{ minPassword }} characters" required autofocus
+						{% if passwordError %}aria-invalid="true" aria-describedby="password-error"{% endif %} />
+					{% if passwordError %}
+					<span class="fieldError" id="password-error">{{ passwordError }}</span>
+					{% endif %}
+				</label>
+
+				<label class="field">
+					<span>Confirm password</span>
+					<input type="password" name="confirmPassword" autocomplete="new-password" placeholder="Type it again" required
+						{% if confirmError %}aria-invalid="true" aria-describedby="confirm-error"{% endif %} />
+					{% if confirmError %}
+					<span class="fieldError" id="confirm-error">{{ confirmError }}</span>
+					{% endif %}
+				</label>
+
+				<button class="submitButton" type="submit" data-busy-label="Saving…">Reset password</button>
+			</form>
+
+			{% else %}
+			<div class="emailForm">
+				<a class="submitButton" href="/get-started">{{ 'Back to sign in' if isReset else 'Continue to sign in' }}</a>
+			</div>
+			{% endif %}
+		</div>
+	</section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/js/verify-code.js"></script>
+{% endblock %}

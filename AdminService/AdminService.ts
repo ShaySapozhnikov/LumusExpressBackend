@@ -17,9 +17,12 @@ const fs = require('fs/promises');
 
 const router = express.Router();
 
+const bcrypt = require('bcryptjs');
+
 import {db} from '../dbServices/mongoClient';
 
 import {SendAuthSessionTokenAdmin, validateAdminAuthSessionToken, session_model, ADMIN_SESSION_MS} from "../AuthService/AuthService"
+import { AdminUsers } from '../typeModels/authModels';
 
 
 const COOKIE_NAME = 'admin_session';
@@ -102,10 +105,23 @@ router.post('/adminlogin', async (req: Request, res: Response) => {
     const {username, password} = req.body;
 
 
-    // env checks so an unset or empty ADMIN_USERNAME / ADMIN_PASSWORD never lets anyone in
-    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
-        return sendPage(res, 'admin-login.html', 'Invalid admin username or password'); // debateing adding more info
+    // db way 
+    const validAccount = await db.collection<AdminUsers>("AdminUsers").findOne({username})
+
+
+    if(!validAccount){return sendPage(res, 'admin-login.html', 'Invalid admin username or password');} 
+
+    const ismatch = await bcrypt.compare(password,validAccount.hashPassword);
+
+    if (!ismatch){
+        
+
     }
+
+
+
+
+
 
     // validates the admin username and sends the code to the admin email
     const sent = await SendAuthSessionTokenAdmin({username}); 
@@ -113,7 +129,13 @@ router.post('/adminlogin', async (req: Request, res: Response) => {
     if (!sent.status) return sendPage(res, 'admin-login.html', sent.message);
 
     return res.redirect(303, '/admin/verify');  // send them to the page 
+
 });
+
+
+
+
+
 
 
 // POST /admin/verify: check the email code, create the session and set the cookie
@@ -173,6 +195,22 @@ router.get('/serverStats', (req: Request, res: Response) => {
     return res.send(JSON.stringify(stats, null, 2)); // json // replaceing any by regez/ how many spaces beten each key:value
 });
 
+
+router.get('/adminLists',  async(req: Request, res: Response) =>{
+
+    const AdminList = await db.collection<AdminUsers>("AdminUsers").find({}).toArray(); // show the whole list of admins!
+
+    if(!AdminList) {
+        res.status(400).json({
+            message:"no admin list found check db",
+            Error: Error,
+        })
+
+    }
+
+    return res.json(AdminList)
+
+})
 
 
 

@@ -1,0 +1,27 @@
+{% extends "layouts/base.njk" %}
+
+{% set notFound = status == 404 %}
+{% set heading = 'Page not found' if notFound else 'Something went wrong' %}
+
+{% block title %}{{ status }} — {{ heading }} | Lumus{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/error.css" />
+{% endblock %}
+
+{% block content %}
+<main class="notFound">
+	<div class="backgroundVideo" aria-hidden="true">
+		{% include "partials/background-video.njk" %}
+	</div>
+
+	<section class="content" aria-labelledby="page-title">
+		<p class="code">Lumus · {{ status }}</p>
+		<h1 id="page-title">{{ heading }}</h1>
+		<p class="description">
+			{{ 'Looks like this page wandered off.' if notFound else 'Please try again in a moment.' }}
+		</p>
+		<a class="homeLink" href="/">Back to Lumus</a>
+	</section>
+</main>
+{% endblock %}

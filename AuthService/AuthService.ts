@@ -35,12 +35,13 @@ const bcrypt = require('bcryptjs');
 
 
 // just formatting makes it easier in the router.
-var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: `${process.env.WEB_APP_URL}/api/auth/callback?result=${encodeURIComponent(JSON.stringify({success: false, message: 'Google sign-in failed'}))}` })
+// the web pages are served by this same server now (WebService), so the callback is a same-origin path
+var gmailPassportOptions = passport.authenticate('google', { session: false, failureRedirect: `/api/auth/callback?result=${encodeURIComponent(JSON.stringify({success: false, message: 'Google sign-in failed'}))}` })
 
-// OAuth callbacks are hit by the browser, so send it back to the web app instead of answering with JSON.
+// OAuth callbacks are hit by the browser, so send it back to the web pages instead of answering with JSON.
 // TEMP: the user is passed in the query string until sessions/tokens are in place.
 function redirectToApp(res: Response, result: { success: boolean, data?: any, message?: string }) {
-    return res.redirect(`${process.env.WEB_APP_URL}/api/auth/callback?result=${encodeURIComponent(JSON.stringify(result))}`);
+    return res.redirect(`/api/auth/callback?result=${encodeURIComponent(JSON.stringify(result))}`);
 }
 
 
@@ -114,9 +115,9 @@ export interface session_model{
 }
 
 
-type tokenType = "passwordReset" | "emailVerification" | "AdminVerfication"
+export type tokenType = "passwordReset" | "emailVerification" | "AdminVerfication"
 
-type TokenStatus = {
+export type TokenStatus = {
     status: boolean,
     message: string,
     sessionHash?: string
@@ -127,7 +128,7 @@ type TokenStatus = {
 
 
 
-async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boolean>
+export async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boolean>
 {
     /////////////////////
     //IMPROVEMENTS NEEDED
@@ -203,7 +204,7 @@ async function GenerateNewToken(email:string,tokenType:tokenType): Promise<boole
 }
 
 // consume = false only checks the token (used to validate a reset code before the new password is sent)
-async function checkToken(email:string, tokenType:tokenType, token:string, consume:boolean = true): Promise<TokenStatus>
+export async function checkToken(email:string, tokenType:tokenType, token:string, consume:boolean = true): Promise<TokenStatus>
 {
 
 
@@ -372,6 +373,35 @@ export async function validateAdminAuthSessionToken(credentails:any) :Promise<To
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
+// shared flows: the JSON routes below and the web pages (WebService) both call these
+
+export async function resetPasswordWithToken(email:string, token:string, password:string): Promise<TokenStatus> {
+    const data = await checkToken(email,"passwordReset",token)
+    if(!data.status){return data;}
+
+    const hash = await bcrypt.hash(password, 10);
+    await db.collection("users").updateOne({email},{$set:{password: hash}})
+    return data;
+}
+
+export async function verifyEmailWithToken(email:string, token:string): Promise<TokenStatus> {
+    //// doing this for the sake of it in case there is some delay etc 
+    /// don't want to waste resources here.
+    const user = await getUserData(email)
+    if(user?.emailVerified == true){
+        return {status: true, message: "already verified"};
+    }
+
+    const data = await checkToken(email, "emailVerification",token)
+    if(!data.status){return data;}
+
+    //#bug review needed make sure that status of the update went threw or create a cron job in the future
+    await db.collection("users").updateOne({email},{$set:{emailVerified: true}}) 
+    return data;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 // reset flow
 
 
@@ -402,13 +432,9 @@ router.post('/verifyResetPasswordToken', async (req:Request, res:Response) => {
 router.post('/resetPassword', async (req:Request, res:Response) => {
     const {email,token,password} = req.body;
 
-    var data = await checkToken(email,"passwordReset",token)
+    var data = await resetPasswordWithToken(email,token,password)
 
     if(!data.status){return res.status(401).json({"success": false,"message":data.message});}
-    
-    const hash = await bcrypt.hash(password, 10);
-
-    await db.collection("users").updateOne({email},{$set:{password: hash}})
 
     return res.status(200).json({"success": true});
 });
@@ -420,25 +446,15 @@ router.post('/resetPassword', async (req:Request, res:Response) => {
 
 router.post('/verifyEmail', async (req:Request,res:any) =>{
 
-    //// doing this for the sake of it in case there is some delay etc 
-    /// don't want to waste resources here.
-
-    const user = await getUserData(express)
-    
-    if(user?.emailVerified == true){
-        return res.status(200).json({"success": true, "message": "already verified"});
-    }
-  
-
     const {email,token} = req.body;
 
-    var data = await checkToken(email, "emailVerification",token)
+    var data = await verifyEmailWithToken(email,token)
 
     if(!data.status){return res.status(401).json({"success": false,"message":data.message});}
 
-    //#bug review needed make sure that status of the update went threw or create a cron job in the future
-    await db.collection("users").updateOne({email},{$set:{emailVerified: true}}) 
-
+    if(data.message == "already verified"){
+        return res.status(200).json({"success": true, "message": "already verified"});
+    }
 
     return res.status(200).json({"success": true});
 })

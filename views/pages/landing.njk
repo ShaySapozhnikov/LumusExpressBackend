@@ -1,0 +1,108 @@
+{% extends "layouts/base.njk" %}
+
+{% block title %}Lumus | Less scrolling. More living{% endblock %}
+
+{% block head %}
+<link rel="preload" href="/lavender-poster.jpg" as="image" />
+<link rel="stylesheet" href="/css/landing.css" />
+{% endblock %}
+
+{% block content %}
+<div class="root">
+	<div class="navShell">
+		<nav class="nav" aria-label="Main navigation">
+			<ul class="navList">
+				<li class="navItem navBrand">
+					<a class="navLink navBrand" href="/" data-view-link="home">Lumus</a>
+				</li>
+				<li class="navItem navGroup">
+					<a class="navLink" href="/get-started">Get Started</a>
+					<a class="navLink" href="#shop" data-view-link="shop">Shop</a>
+					<a class="navLink" href="#blog" data-view-link="blog">Development Blog</a>
+				</li>
+			</ul>
+		</nav>
+	</div>
+
+	<main class="pageStage">
+		<div class="stageBackground" aria-hidden="true">
+			{% include "partials/background-video.njk" %}
+		</div>
+
+		{# all three views are rendered, landing.js crossfades between them #}
+		<div class="pageView active" data-view="home" data-title="Lumus | Less scrolling. More living">
+			<div class="heroSection">
+				<div class="heroContent">
+					<p class="heroTitle">Lumus</p>
+					<p class="heroSubtitle">Less scrolling. More living</p>
+					<p class="heroDescription">Meet Lumus, your little companion for a life lived beyond the screen.</p>
+					<a href="/get-started" class="heroButton">Get Started</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="pageView" data-view="blog" data-title="Development Blog | Lumus" inert>
+			<div class="blogPage">
+				<section class="blogContent" aria-label="Lumus development blog">
+					<div data-blog-list>
+						<div class="blogHeading">
+							<div>
+								<p class="eyebrow">-Notes from Lumus</p>
+								<h1>Development Blog</h1>
+							</div>
+						</div>
+
+						<div class="storyList">
+							{% for post in posts %}
+							<article class="story">
+								<p class="storyNumber">0{{ loop.index }}</p>
+								<div class="storyCopy">
+									<p class="eyebrow">{{ post.category }} <span>·</span> {{ post.readingTime }}</p>
+									<h2>{{ post.title }}</h2>
+									<p class="excerpt">{{ post.excerpt }}</p>
+								</div>
+								<button class="readButton" type="button" aria-label="Read {{ post.title }}" data-open-post="{{ loop.index0 }}">
+									Read story <span aria-hidden="true">↗</span>
+								</button>
+							</article>
+							{% else %}
+							<p class="eyebrow">-No posts yet. Check back soon!</p>
+							{% endfor %}
+						</div>
+					</div>
+
+					{% for post in posts %}
+					<article class="article" data-post="{{ loop.index0 }}" hidden>
+						<button class="textButton" type="button" data-close-post>
+							<span aria-hidden="true">←</span> All stories
+						</button>
+						<p class="eyebrow">{{ post.category }} <span>·</span> {{ post.readingTime }}</p>
+						<h1>{{ post.title }}</h1>
+						<p class="articleLead">{{ post.excerpt }}</p>
+						<div class="articleBody">
+							{% for paragraph in post.paragraphs %}
+							<p>{{ paragraph }}</p>
+							{% endfor %}
+						</div>
+						<button class="textButton closeArticle" type="button" data-view-link="home">Back to Lumus</button>
+					</article>
+					{% endfor %}
+				</section>
+			</div>
+		</div>
+
+		<div class="pageView" data-view="shop" data-title="Shop Coming Soon | Lumus" inert>
+			<div class="shopPage">
+				<section class="shopContent" aria-labelledby="shop-title">
+					<p class="shopBrand">Lumus</p>
+					<h1 id="shop-title">coming soon.</h1>
+				</section>
+			</div>
+		</div>
+	</main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/js/landing.js"></script>
+{% endblock %}

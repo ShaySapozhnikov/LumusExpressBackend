@@ -1,0 +1,109 @@
+{% extends "layouts/base.njk" %}
+{% from "partials/icons.njk" import errorIcon, googleIcon, githubIcon %}
+
+{% set isSignup = mode == 'signup' %}
+
+{% block title %}{{ 'Create account' if isSignup else 'Sign in' }} | Lumus{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="/css/auth.css" />
+{% endblock %}
+
+{#
+  Text that changes between sign in and create account carries both versions in
+  data-signin / data-signup so get-started.js can switch modes without a reload.
+  Without JS the mode buttons submit ?mode=... and the server renders the other mode.
+#}
+{% block content %}
+<main class="authPage" data-mode="{{ mode }}">
+	{% include "partials/showcase.njk" %}
+
+	<section class="formPanel" aria-labelledby="auth-title">
+		<a class="brand" href="/"> &larr; home</a>
+
+		<div class="formInner">
+			<form class="modeSwitch" method="get" action="/get-started" role="group" aria-label="Choose sign in or create account">
+				<button type="submit" name="mode" value="signin" data-mode-button="signin"
+					class="{{ 'active' if not isSignup }}" aria-pressed="{{ 'false' if isSignup else 'true' }}">Sign in</button>
+				<button type="submit" name="mode" value="signup" data-mode-button="signup"
+					class="{{ 'active' if isSignup }}" aria-pressed="{{ 'true' if isSignup else 'false' }}">Create account</button>
+			</form>
+
+			<h1 id="auth-title" data-signin="Welcome back" data-signup="Create your account">
+				{{ 'Create your account' if isSignup else 'Welcome back' }}
+			</h1>
+			<p class="description"
+				data-signin="Sign in to pick up where you left off."
+				data-signup="A little more life between the scrolls starts here.">
+				{{ 'A little more life between the scrolls starts here.' if isSignup else 'Sign in to pick up where you left off.' }}
+			</p>
+
+			{# OAuth goes straight to the AuthService routes, each provider handles both sign in and sign up #}
+			<div class="providers">
+				<a class="providerButton" href="/auth/google" data-provider="Google">
+					{{ googleIcon() }}
+					<span>Continue with Google</span>
+				</a>
+				<a class="providerButton" href="/auth/github" data-provider="GitHub">
+					{{ githubIcon() }}
+					<span>Continue with GitHub</span>
+				</a>
+			</div>
+
+			<div class="divider"><span>or use your email</span></div>
+
+			<form class="emailForm" method="post" action="/get-started" novalidate data-email-form>
+				<input type="hidden" name="mode" value="{{ mode }}" />
+
+				{% if formError %}
+				<div class="formError" role="alert" data-form-error>
+					{{ errorIcon() }}
+					<p>{{ formError }}</p>
+				</div>
+				{% endif %}
+
+				<label class="field">
+					<span>Email</span>
+					<input type="email" name="email" autocomplete="email" placeholder="you@example.com" required
+						value="{{ email }}"
+						{% if emailError %}aria-invalid="true" aria-describedby="email-error"{% endif %} />
+					{% if emailError %}
+					<span class="fieldError" id="email-error">{{ errorIcon() }} {{ emailError }}</span>
+					{% endif %}
+				</label>
+
+				<label class="field">
+					<span class="fieldLabelRow">
+						Password
+						<a class="inlineLink" href="/forgot-password" data-signin-only {% if isSignup %}hidden{% endif %}>Forgot password?</a>
+					</span>
+					<input type="password" name="password" required
+						autocomplete="{{ 'new-password' if isSignup else 'current-password' }}"
+						placeholder="{{ 'At least 8 characters' if isSignup else 'Your password' }}"
+						{% if isSignup %}minlength="8"{% endif %}
+						{% if passwordError %}aria-invalid="true" aria-describedby="password-error"{% endif %} />
+					{% if passwordError %}
+					<span class="fieldError" id="password-error">{{ errorIcon() }} {{ passwordError }}</span>
+					{% endif %}
+				</label>
+
+				<button class="submitButton" type="submit"
+					data-signin="Sign in" data-signup="Create account"
+					data-signin-busy="Signing in…" data-signup-busy="Creating account…">
+					{{ 'Create account' if isSignup else 'Sign in' }}
+				</button>
+			</form>
+
+			<form class="switchPrompt" method="get" action="/get-started">
+				<span data-signin="New to Lumus?" data-signup="Already have an account?">{{ 'Already have an account?' if isSignup else 'New to Lumus?' }}</span>
+				<button type="submit" class="inlineLink" name="mode" value="{{ 'signin' if isSignup else 'signup' }}" data-mode-toggle
+					data-signin="Create one" data-signup="Sign in">{{ 'Sign in' if isSignup else 'Create one' }}</button>
+			</form>
+		</div>
+	</section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script src="/js/get-started.js"></script>
+{% endblock %}
